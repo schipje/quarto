@@ -1,0 +1,9 @@
+{
+  "name": "quarto",
+  "version": "1.0.0",
+  "description": "Online Quarto bordspel met AI-tegenstander (Makkelijk / Gemiddeld / Moeilijk)",
+  "scripts": {
+    "test": "node --test quarto.test.js"
+  },
+  "license": "MIT"
+}

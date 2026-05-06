@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quarto</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    background: #12121f;
+    color: #ddd;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px;
+    gap: 14px;
+}
+
+h1 {
+    font-size: 2.6rem;
+    letter-spacing: 10px;
+    color: #c9a84c;
+    text-transform: uppercase;
+    text-shadow: 0 2px 12px rgba(200,160,60,0.3);
+}
+
+.subtitle {
+    font-size: 0.78rem;
+    color: #555;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+
+/* Mode selector */
+#settings {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.88rem;
+    color: #888;
+}
+#settings label { letter-spacing: 0.5px; }
+#mode-sel {
+    background: #1e1e35;
+    color: #bbb;
+    border: 1px solid #444;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 0.88rem;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.15s;
+}
+#mode-sel:focus { border-color: #c9a84c; }
+
+/* Status bar */
+#status-bar {
+    background: #1a1a30;
+    border: 1px solid #333;
+    border-radius: 10px;
+    padding: 12px 28px;
+    font-size: 1rem;
+    text-align: center;
+    min-width: 320px;
+    max-width: 600px;
+    color: #88bbff;
+    transition: background 0.3s, color 0.3s;
+}
+#status-bar.winner { color: #88ffaa; border-color: #3a8a3a; background: #162016; }
+#status-bar.draw   { color: #ffdd88; border-color: #7a6a30; background: #1e1a10; }
+#status-bar.thinking { color: #ffcc55; border-color: #665a20; background: #1e1a10; }
+
+/* Player indicators */
+#players { display: flex; gap: 20px; }
+.player-badge {
+    padding: 6px 20px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    border: 2px solid #333;
+    color: #666;
+    transition: all 0.2s;
+}
+.player-badge.active {
+    border-color: #c9a84c;
+    color: #c9a84c;
+    background: rgba(200,168,76,0.1);
+    box-shadow: 0 0 12px rgba(200,168,76,0.2);
+}
+.player-badge .badge-sub {
+    font-size: 0.68rem;
+    opacity: 0.7;
+    display: block;
+    text-align: center;
+}
+
+/* Game area */
+#game-area {
+    display: flex;
+    gap: 28px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+/* Board */
+#board {
+    display: grid;
+    grid-template-columns: repeat(4, 82px);
+    grid-template-rows: repeat(4, 82px);
+    gap: 6px;
+    background: #3a2010;
+    padding: 10px;
+    border-radius: 12px;
+    border: 3px solid #5c3820;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.7);
+}
+
+.cell {
+    width: 82px;
+    height: 82px;
+    background: #4a2e18;
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+}
+.cell.placeable { cursor: pointer; background: #3c2412; }
+.cell.placeable:hover { background: #6a4028; }
+.cell.win-cell {
+    background: #284820 !important;
+    box-shadow: inset 0 0 16px rgba(80,200,60,0.35);
+}
+
+/* Side panel */
+#side-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    align-items: center;
+}
+
+.panel-label {
+    font-size: 0.72rem;
+    color: #666;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+
+/* Tray */
+#tray {
+    display: grid;
+    grid-template-columns: repeat(4, 66px);
+    gap: 5px;
+    background: #18182e;
+    padding: 8px;
+    border-radius: 10px;
+    border: 1px solid #28284a;
+}
+
+.tray-slot {
+    width: 66px;
+    height: 66px;
+    background: #20203a;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, box-shadow 0.15s;
+    position: relative;
+}
+.tray-slot.selectable { cursor: pointer; }
+.tray-slot.selectable:hover { background: #30305a; }
+.tray-slot.selected { background: #183018; box-shadow: 0 0 0 2px #5aaa2a; }
+.tray-slot.used { visibility: hidden; pointer-events: none; }
+
+/* Selection area */
+#selection-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    min-height: 130px;
+}
+
+#selected-preview {
+    width: 82px;
+    height: 82px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #1a1a30;
+    border-radius: 8px;
+    border: 2px dashed #333;
+}
+
+#confirm-btn {
+    padding: 9px 22px;
+    background: #285a00;
+    color: #aaffaa;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.88rem;
+    font-weight: bold;
+    display: none;
+    transition: background 0.15s, transform 0.1s;
+    letter-spacing: 0.5px;
+}
+#confirm-btn:hover { background: #3a8000; transform: scale(1.03); }
+#confirm-btn.visible { display: block; }
+
+/* Piece visuals */
+.piece-wrap {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    pointer-events: none;
+}
+
+/* Legend */
+#legend {
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+    justify-content: center;
+    font-size: 0.75rem;
+    color: #666;
+    max-width: 640px;
+}
+.legend-item { display: flex; align-items: center; gap: 6px; }
+.leg-swatch  { flex-shrink: 0; }
+
+/* Restart */
+#restart-btn {
+    padding: 10px 36px;
+    background: #c9a84c;
+    color: #12121f;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: bold;
+    cursor: pointer;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    transition: background 0.15s, transform 0.1s;
+}
+#restart-btn:hover { background: #e0c060; transform: scale(1.02); }
+
+/* Tooltip */
+[data-tip] { position: relative; }
+[data-tip]:hover::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: calc(100% + 7px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #222240;
+    color: #ccc;
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-size: 0.7rem;
+    white-space: nowrap;
+    z-index: 20;
+    pointer-events: none;
+    border: 1px solid #444;
+}
+</style>
+</head>
+<body>
+
+<h1>Quarto</h1>
+<div class="subtitle">Vier op een rij met gedeelde eigenschappen</div>
+
+<div id="settings">
+    <label for="mode-sel">Tegenstander:</label>
+    <select id="mode-sel">
+        <option value="human">Mens</option>
+        <option value="easy">Computer — Makkelijk</option>
+        <option value="medium" selected>Computer — Gemiddeld</option>
+        <option value="hard">Computer — Moeilijk</option>
+    </select>
+</div>
+
+<div id="players">
+    <div class="player-badge" id="p1-badge">
+        Speler 1
+        <span class="badge-sub" id="p1-sub"></span>
+    </div>
+    <div class="player-badge" id="p2-badge">
+        Speler 2
+        <span class="badge-sub" id="p2-sub"></span>
+    </div>
+</div>
+
+<div id="status-bar">Laden…</div>
+
+<div id="game-area">
+    <div id="board"></div>
+    <div id="side-panel">
+        <div class="panel-label">Beschikbare stukken</div>
+        <div id="tray"></div>
+        <div id="selection-area">
+            <div class="panel-label">Gekozen stuk</div>
+            <div id="selected-preview"></div>
+            <button id="confirm-btn">Geef aan tegenstander ▶</button>
+        </div>
+    </div>
+</div>
+
+<div id="legend">
+    <div class="legend-item">
+        <div class="leg-swatch" style="width:12px;height:22px;background:#7a4828;border-radius:2px"></div>Donker
+    </div>
+    <div class="legend-item">
+        <div class="leg-swatch" style="width:12px;height:22px;background:#e8d5b0;border:1px solid #c4a870;border-radius:2px"></div>Licht
+    </div>
+    <div class="legend-item">
+        <div class="leg-swatch" style="width:12px;height:22px;background:#888;border-radius:2px"></div>Hoog
+    </div>
+    <div class="legend-item">
+        <div class="leg-swatch" style="width:12px;height:13px;background:#888;border-radius:2px;margin-top:5px"></div>Laag
+    </div>
+    <div class="legend-item">
+        <div class="leg-swatch" style="width:16px;height:16px;background:#888;border-radius:2px"></div>Vierkant
+    </div>
+    <div class="legend-item">
+        <div class="leg-swatch" style="width:16px;height:16px;background:#888;border-radius:50%"></div>Rond
+    </div>
+    <div class="legend-item">
+        <div class="leg-swatch" style="width:16px;height:16px;background:#888;border-radius:50%"></div>Vol
+    </div>
+    <div class="legend-item">
+        <div class="leg-swatch" style="width:16px;height:16px;background:transparent;border:2px solid #888;border-radius:50%"></div>Hol
+    </div>
+</div>
+
+<button id="restart-btn">Nieuw spel</button>
+
+<script>
+// ── Piece encoding ───────────────────────────────────────
+// bit 3 = Hoog, bit 2 = Donker, bit 1 = Vierkant, bit 0 = Vol
+
+let boardState;   // 16 cells: null | 0-15
+let available;    // Set of pieces not yet placed
+let chosen;       // piece highlighted in tray (not confirmed yet)
+let phase;        // 'select' | 'place'
+let selector;     // 1 or 2 — who is selecting a piece for the OPPONENT
+let gameOver;
+let winCells;
+
+// AI state
+let computerPlayer = 0;  // 0 = none, 2 = computer plays as player 2
+let difficulty = 'medium';
+let aiTimer = null;
+
+function placer() { return selector === 1 ? 2 : 1; }
+
+function attrs(p) {
+    return { tall: !!(p&8), dark: !!(p&4), square: !!(p&2), solid: !!(p&1) };
+}
+
+function desc(p) {
+    const a = attrs(p);
+    return `${a.tall?'Hoog':'Laag'} · ${a.dark?'Donker':'Licht'} · ${a.square?'Vierkant':'Rond'} · ${a.solid?'Vol':'Hol'}`;
+}
+
+// ── Piece rendering ──────────────────────────────────────
+
+function makePiece(p, containerPx) {
+    const a = attrs(p);
+    const maxH = containerPx * 0.80;
+    const h = a.tall ? maxH : maxH * 0.50;
+    const w = containerPx * 0.56;
+
+    const wrap = document.createElement('div');
+    wrap.className = 'piece-wrap';
+    wrap.style.cssText = `width:${containerPx}px;height:${containerPx}px`;
+
+    const body = document.createElement('div');
+    body.style.width  = w + 'px';
+    body.style.height = h + 'px';
+    body.style.borderRadius = a.square ? '4px' : '50%';
+
+    if (a.solid) {
+        body.style.background = a.dark ? '#7a4828' : '#e8d5b0';
+        body.style.border = `2px solid ${a.dark ? '#4a2810' : '#c4a870'}`;
+        body.style.boxShadow = 'inset 0 -3px 6px rgba(0,0,0,0.25), inset 0 3px 4px rgba(255,255,255,0.08)';
+    } else {
+        body.style.background = 'transparent';
+        body.style.border = `3px solid ${a.dark ? '#7a4828' : '#c4a870'}`;
+    }
+
+    wrap.appendChild(body);
+    return wrap;
+}
+
+// ── Win detection ────────────────────────────────────────
+
+const LINES = [
+    [0,1,2,3],[4,5,6,7],[8,9,10,11],[12,13,14,15],
+    [0,4,8,12],[1,5,9,13],[2,6,10,14],[3,7,11,15],
+    [0,5,10,15],[3,6,9,12]
+];
+
+function checkWinOnBoard(board) {
+    for (const line of LINES) {
+        if (!line.every(i => board[i] !== null)) continue;
+        for (let bit = 0; bit < 4; bit++) {
+            const mask = 1 << bit;
+            const ref  = board[line[0]] & mask;
+            if (line.every(i => (board[i] & mask) === ref)) return line;
+        }
+    }
+    return null;
+}
+
+// ── AI helpers ───────────────────────────────────────────
+
+function emptyCells() {
+    return boardState.reduce((a, v, i) => { if (v === null) a.push(i); return a; }, []);
+}
+
+function wouldWin(board, piece, cell) {
+    const b = [...board]; b[cell] = piece;
+    return checkWinOnBoard(b) !== null;
+}
+
+// Would giving this piece to the opponent let them win immediately?
+function isDangerous(piece) {
+    return emptyCells().some(c => wouldWin(boardState, piece, c));
+}
+
+// How many partial-quarto lines does placing `piece` at `cell` contribute to?
+// Weighted by line length (more pieces in line = higher score).
+function placementScore(piece, cell) {
+    const b = [...boardState]; b[cell] = piece;
+    let score = 0;
+    for (const line of LINES) {
+        if (!line.includes(cell)) continue;
+        const ps = line.filter(i => b[i] !== null).map(i => b[i]);
+        if (!ps.length) continue;
+        for (let bit = 0; bit < 4; bit++) {
+            const mask = 1 << bit, ref = ps[0] & mask;
+            if (ps.every(p => (p & mask) === ref)) { score += ps.length; break; }
+        }
+    }
+    return score;
+}
+
+// Sum of placement scores across all empty cells — how valuable is this piece overall?
+function pieceDangerScore(piece) {
+    return emptyCells().reduce((s, c) => s + placementScore(piece, c), 0);
+}
+
+// ── AI decision ──────────────────────────────────────────
+
+function aiSelect() {
+    const avail = [...available];
+
+    if (difficulty === 'easy') {
+        return avail[Math.random() * avail.length | 0];
+    }
+
+    // medium + hard: never hand over an immediately-winning piece
+    const safe = avail.filter(p => !isDangerous(p));
+    const pool = safe.length ? safe : avail; // fallback: all dangerous, pick least bad
+
+    if (difficulty === 'medium' || pool.length === 1) {
+        return pool[Math.random() * pool.length | 0];
+    }
+
+    // hard: give the piece with the lowest strategic value for the opponent
+    let best = pool[0], bestScore = Infinity;
+    for (const p of pool) {
+        const s = pieceDangerScore(p);
+        if (s < bestScore) { bestScore = s; best = p; }
+    }
+    return best;
+}
+
+function aiPlace() {
+    const empty = emptyCells();
+
+    // All difficulties: win immediately if possible
+    for (const c of empty) {
+        if (wouldWin(boardState, chosen, c)) return c;
+    }
+
+    if (difficulty === 'easy') {
+        return empty[Math.random() * empty.length | 0];
+    }
+
+    // medium + hard: prefer cells that build the most partial-quarto lines
+    let best = empty[0], bestScore = -1;
+    for (const c of empty) {
+        const s = placementScore(chosen, c);
+        if (s > bestScore) { bestScore = s; best = c; }
+    }
+    return best;
+}
+
+// ── AI turn scheduling ───────────────────────────────────
+
+function isComputerTurn() {
+    if (!computerPlayer || gameOver) return false;
+    return phase === 'select'
+        ? selector === computerPlayer
+        : placer() === computerPlayer;
+}
+
+function scheduleAI() {
+    if (!isComputerTurn() || aiTimer) return;
+    aiTimer = setTimeout(doAIMove, difficulty === 'hard' ? 900 : 650);
+}
+
+function doAIMove() {
+    aiTimer = null;
+    if (!isComputerTurn() || gameOver) return;
+
+    if (phase === 'select') {
+        chosen = aiSelect();
+        render(); // show chosen piece highlighted
+        aiTimer = setTimeout(() => {
+            aiTimer = null;
+            handleConfirm();
+        }, 450);
+    } else {
+        handlePlace(aiPlace());
+    }
+}
+
+// ── Render ───────────────────────────────────────────────
+
+function render() {
+    renderBoard();
+    renderTray();
+    renderSelection();
+    renderStatus();
+    renderBadges();
+}
+
+function renderBoard() {
+    const el = document.getElementById('board');
+    el.innerHTML = '';
+    const humanCanPlace = !gameOver && phase === 'place' && placer() !== computerPlayer;
+
+    for (let i = 0; i < 16; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        if (winCells && winCells.includes(i)) cell.classList.add('win-cell');
+
+        if (boardState[i] !== null) {
+            const pw = makePiece(boardState[i], 68);
+            pw.setAttribute('data-tip', desc(boardState[i]));
+            cell.appendChild(pw);
+        } else if (humanCanPlace) {
+            cell.classList.add('placeable');
+            cell.addEventListener('click', () => handlePlace(i));
+        }
+        el.appendChild(cell);
+    }
+}
+
+function renderTray() {
+    const el = document.getElementById('tray');
+    el.innerHTML = '';
+    const humanCanSelect = !gameOver && phase === 'select' && selector !== computerPlayer;
+
+    for (let p = 0; p < 16; p++) {
+        const slot = document.createElement('div');
+        slot.className = 'tray-slot';
+
+        if (!available.has(p)) {
+            slot.classList.add('used');
+            el.appendChild(slot);
+            continue;
+        }
+        if (p === chosen) slot.classList.add('selected');
+        if (humanCanSelect) {
+            slot.classList.add('selectable');
+            slot.addEventListener('click', () => handlePick(p));
+        }
+        slot.appendChild(makePiece(p, 56));
+        slot.setAttribute('data-tip', desc(p));
+        el.appendChild(slot);
+    }
+}
+
+function renderSelection() {
+    const preview = document.getElementById('selected-preview');
+    const btn = document.getElementById('confirm-btn');
+    preview.innerHTML = '';
+    const showConfirm = !gameOver && phase === 'select'
+        && selector !== computerPlayer && chosen !== null;
+
+    if (chosen !== null) preview.appendChild(makePiece(chosen, 72));
+    btn.style.display = showConfirm ? 'block' : 'none';
+}
+
+function renderStatus() {
+    const el = document.getElementById('status-bar');
+    el.className = '';
+
+    if (gameOver) {
+        if (winCells) {
+            el.className = 'winner';
+            const winner = placer();
+            const name = (computerPlayer === winner) ? 'Computer' : `Speler ${winner}`;
+            el.textContent = `${name} wint! Vier stukken met een gemeenschappelijke eigenschap.`;
+        } else {
+            el.className = 'draw';
+            el.textContent = 'Gelijkspel — het bord is vol zonder winnaar.';
+        }
+        return;
+    }
+
+    const isAI = isComputerTurn();
+    if (isAI) {
+        el.className = 'thinking';
+        el.textContent = phase === 'select'
+            ? 'Computer kiest een stuk…'
+            : 'Computer plaatst het stuk…';
+        return;
+    }
+
+    const opponent = placer() === computerPlayer ? 'Computer' : `Speler ${placer()}`;
+    if (phase === 'select') {
+        el.textContent = chosen === null
+            ? `Speler ${selector}: kies een stuk voor ${opponent}`
+            : `Speler ${selector}: bevestig of kies een ander stuk`;
+    } else {
+        el.textContent = `Speler ${placer()}: klik een lege cel om het stuk te plaatsen`;
+    }
+}
+
+function renderBadges() {
+    const p1 = document.getElementById('p1-badge');
+    const p2 = document.getElementById('p2-badge');
+    const p2sub = document.getElementById('p2-sub');
+    const active = gameOver ? 0 : (phase === 'select' ? selector : placer());
+
+    const labels = { easy: 'Makkelijk', medium: 'Gemiddeld', hard: 'Moeilijk' };
+    p2sub.textContent = computerPlayer === 2 ? `🤖 ${labels[difficulty]}` : '';
+
+    p1.classList.toggle('active', active === 1);
+    p2.classList.toggle('active', active === 2);
+}
+
+// ── Human handlers ───────────────────────────────────────
+
+function handlePick(p) {
+    if (gameOver || phase !== 'select' || selector === computerPlayer) return;
+    chosen = p;
+    render();
+}
+
+function handleConfirm() {
+    if (gameOver || phase !== 'select' || chosen === null) return;
+    phase = 'place';
+    render();
+    scheduleAI();
+}
+
+function handlePlace(cellIdx) {
+    if (gameOver || phase !== 'place' || chosen === null || boardState[cellIdx] !== null) return;
+
+    boardState[cellIdx] = chosen;
+    available.delete(chosen);
+
+    const win = checkWinOnBoard(boardState);
+    if (win) {
+        winCells = win;
+        gameOver = true;
+        chosen = null;
+        render();
+        return;
+    }
+
+    if (!available.size) {
+        gameOver = true;
+        winCells = null;
+        chosen = null;
+        render();
+        return;
+    }
+
+    selector = placer();
+    chosen = null;
+    phase = 'select';
+    render();
+    scheduleAI();
+}
+
+// ── Init ─────────────────────────────────────────────────
+
+function init() {
+    if (aiTimer) { clearTimeout(aiTimer); aiTimer = null; }
+
+    const mode = document.getElementById('mode-sel').value;
+    computerPlayer = mode === 'human' ? 0 : 2;
+    difficulty = mode === 'human' ? 'medium' : mode;
+
+    boardState = Array(16).fill(null);
+    available  = new Set(Array.from({length: 16}, (_, i) => i));
+    chosen     = null;
+    phase      = 'select';
+    selector   = 1;
+    gameOver   = false;
+    winCells   = null;
+
+    render();
+    scheduleAI(); // in case computer plays as P1 (future use)
+}
+
+document.getElementById('confirm-btn').addEventListener('click', handleConfirm);
+document.getElementById('restart-btn').addEventListener('click', init);
+document.getElementById('mode-sel').addEventListener('change', init);
+
+init();
+</script>
+</body>
+</html>
