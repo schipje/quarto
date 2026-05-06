@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Air Freight Planner</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    font-family: 'Segoe UI', sans-serif;
+    background: #f0f2f5;
+    color: #222;
+    min-height: 100vh;
+}
+
+header {
+    background: #1a2744;
+    color: #fff;
+    padding: 14px 28px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+header h1 { font-size: 1.25rem; font-weight: 600; letter-spacing: 0.5px; }
+header .sub { font-size: 0.78rem; color: #8899bb; margin-top: 2px; }
+
+nav {
+    background: #243158;
+    display: flex;
+    gap: 2px;
+    padding: 0 28px;
+}
+.tab {
+    padding: 12px 22px;
+    color: #8899bb;
+    cursor: pointer;
+    font-size: 0.88rem;
+    border-bottom: 3px solid transparent;
+    transition: all 0.15s;
+    user-select: none;
+}
+.tab:hover { color: #cdd5e8; }
+.tab.active { color: #fff; border-bottom-color: #4e7fff; }
+
+main { padding: 28px; max-width: 1200px; margin: 0 auto; }
+
+.panel { display: none; }
+.panel.active { display: block; }
+
+/* Cards */
+.card {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+    padding: 22px 24px;
+    margin-bottom: 20px;
+}
+.card h2 { font-size: 1rem; font-weight: 600; margin-bottom: 16px; color: #1a2744; }
+
+/* Tables */
+table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+th { text-align: left; padding: 8px 12px; background: #f5f7fa; color: #556; font-weight: 600; border-bottom: 2px solid #e4e8f0; }
+td { padding: 8px 12px; border-bottom: 1px solid #eef0f4; vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: #f8faff; }
+
+/* Forms */
+.form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-bottom: 14px; }
+label { display: block; font-size: 0.78rem; font-weight: 600; color: #556; margin-bottom: 4px; }
+input, select, textarea {
+    width: 100%; padding: 8px 10px; border: 1px solid #d0d5e0;
+    border-radius: 6px; font-size: 0.875rem; color: #222;
+    transition: border-color 0.15s;
+}
+input:focus, select:focus { outline: none; border-color: #4e7fff; }
+textarea { min-height: 72px; resize: vertical; }
+
+/* Buttons */
+.btn {
+    padding: 8px 18px; border: none; border-radius: 6px;
+    font-size: 0.875rem; font-weight: 600; cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+}
+.btn:active { transform: scale(0.97); }
+.btn-primary { background: #4e7fff; color: #fff; }
+.btn-primary:hover { background: #3366ee; }
+.btn-danger  { background: #e84040; color: #fff; font-size: 0.78rem; padding: 4px 10px; }
+.btn-danger:hover { background: #c82020; }
+.btn-sm { padding: 5px 12px; font-size: 0.78rem; }
+
+/* Badges */
+.badge {
+    display: inline-block; padding: 2px 8px; border-radius: 10px;
+    font-size: 0.72rem; font-weight: 700;
+}
+.badge-green  { background: #d4f7e0; color: #1a7a3a; }
+.badge-orange { background: #fff0d4; color: #a05a00; }
+.badge-red    { background: #fde8e8; color: #b01010; }
+.badge-blue   { background: #e0eaff; color: #1a3a8a; }
+.badge-gray   { background: #eee; color: #666; }
+
+/* Conflict list */
+.conflict-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.conflict-item {
+    padding: 10px 14px; border-radius: 7px; font-size: 0.85rem;
+    display: flex; align-items: flex-start; gap: 10px;
+}
+.conflict-item.HARD    { background: #fde8e8; border-left: 4px solid #e84040; }
+.conflict-item.WARNING { background: #fff6e0; border-left: 4px solid #f0a000; }
+.conflict-item.INFO    { background: #e8f0ff; border-left: 4px solid #4e7fff; }
+.conflict-code { font-weight: 700; flex-shrink: 0; }
+
+.empty { color: #aaa; font-style: italic; padding: 12px 0; text-align: center; }
+
+/* DGR shipment builder */
+.shipment-row {
+    display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 8px;
+    align-items: end; margin-bottom: 8px;
+}
+.valid-result   { padding: 14px; border-radius: 8px; font-weight: 600; font-size: 0.95rem; }
+.valid-result.ok  { background: #d4f7e0; color: #1a7a3a; }
+.valid-result.err { background: #fde8e8; color: #b01010; }
+
+/* Substance detail */
+.substance-detail { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; font-size: 0.875rem; }
+.substance-detail dt { color: #778; font-size: 0.78rem; font-weight: 600; }
+.substance-detail dd { margin: 0 0 4px; }
+</style>
+</head>
+<body>
+
+<header>
+    <div>
+        <h1>✈ Air Freight Planner</h1>
+        <div class="sub">MVP — Fleet · Routes · Dangerous Goods</div>
+    </div>
+</header>
+
+<nav>
+    <div class="tab active" data-tab="fleet">Fleet</div>
+    <div class="tab" data-tab="airports">Luchthavens</div>
+    <div class="tab" data-tab="routes">Routes</div>
+    <div class="tab" data-tab="dgr">DGR Validator</div>
+</nav>
+
+<main>
+
+<!-- ── FLEET ── -->
+<div class="panel active" id="panel-fleet">
+    <div class="card">
+        <h2>Vliegtuig toevoegen</h2>
+        <div class="form-grid">
+            <div><label>Registratie</label><input id="ac-reg" placeholder="PH-XXX"></div>
+            <div><label>Type</label>
+                <select id="ac-type">
+                    <option>B747-8F</option><option>B777F</option>
+                    <option>A330F</option><option>B767F</option><option>DC8F</option>
+                </select>
+            </div>
+            <div><label>Max payload (kg)</label><input id="ac-payload" type="number" placeholder="134000"></div>
+            <div><label>Volume (m³)</label><input id="ac-volume" type="number" placeholder="858"></div>
+            <div><label>Range (nm)</label><input id="ac-range" type="number" placeholder="8130"></div>
+            <div><label>Home base (ICAO)</label><input id="ac-base" placeholder="EHAM"></div>
+            <div><label>Status</label>
+                <select id="ac-status">
+                    <option>ACTIVE</option><option>AOG</option><option>MAINTENANCE</option>
+                </select>
+            </div>
+            <div><label>DG klassen (komma)</label><input id="ac-dg" placeholder="2,3,8,9"></div>
+        </div>
+        <button class="btn btn-primary" onclick="addAircraft()">Toevoegen</button>
+    </div>
+    <div class="card">
+        <h2>Vloot</h2>
+        <table id="fleet-table">
+            <thead><tr>
+                <th>Registratie</th><th>Type</th><th>Payload (kg)</th>
+                <th>Range (nm)</th><th>Home</th><th>DG klassen</th><th>Status</th><th></th>
+            </tr></thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ── AIRPORTS ── -->
+<div class="panel" id="panel-airports">
+    <div class="card">
+        <h2>Luchthaven toevoegen</h2>
+        <div class="form-grid">
+            <div><label>ICAO</label><input id="ap-icao" placeholder="EHAM"></div>
+            <div><label>IATA</label><input id="ap-iata" placeholder="AMS"></div>
+            <div><label>Naam</label><input id="ap-name" placeholder="Amsterdam Schiphol"></div>
+            <div><label>Stad</label><input id="ap-city" placeholder="Amsterdam"></div>
+            <div><label>Land</label><input id="ap-country" placeholder="Netherlands"></div>
+            <div><label>Tijdzone</label><input id="ap-tz" placeholder="Europe/Amsterdam"></div>
+            <div><label>Curfew start (HH:MM)</label><input id="ap-cs" placeholder="23:00"></div>
+            <div><label>Curfew eind (HH:MM)</label><input id="ap-ce" placeholder="06:00"></div>
+            <div><label>DG klassen (komma)</label><input id="ap-dg" placeholder="2,3,8,9"></div>
+            <div><label>Cargo terminal</label><input id="ap-term" placeholder="Cargo City"></div>
+        </div>
+        <button class="btn btn-primary" onclick="addAirport()">Toevoegen</button>
+    </div>
+    <div class="card">
+        <h2>Luchthavens</h2>
+        <table id="airports-table">
+            <thead><tr>
+                <th>ICAO</th><th>IATA</th><th>Naam</th><th>Land</th>
+                <th>Curfew</th><th>DG klassen</th><th>Terminal</th><th></th>
+            </tr></thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ── ROUTES ── -->
+<div class="panel" id="panel-routes">
+    <div class="card">
+        <h2>Route toevoegen</h2>
+        <div class="form-grid">
+            <div><label>Van (ICAO)</label><input id="rt-orig" placeholder="EHAM"></div>
+            <div><label>Naar (ICAO)</label><input id="rt-dest" placeholder="KJFK"></div>
+            <div><label>Afstand (nm)</label><input id="rt-dist" type="number" placeholder="3631"></div>
+            <div><label>Vluchttijd (min)</label><input id="rt-time" type="number" placeholder="480"></div>
+            <div><label>Brandstof (kg)</label><input id="rt-fuel" type="number" placeholder="85000"></div>
+            <div><label>Alternates (komma)</label><input id="rt-alt" placeholder="KBOS,KEWR"></div>
+            <div><label>Overvluchtlanden</label><input id="rt-ov" placeholder="DK,IS,CA"></div>
+        </div>
+        <button class="btn btn-primary" onclick="addRoute()">Toevoegen</button>
+    </div>
+    <div class="card">
+        <h2>Routes</h2>
+        <table id="routes-table">
+            <thead><tr>
+                <th>Van</th><th>Naar</th><th>Afstand</th>
+                <th>Vluchttijd</th><th>Brandstof</th><th>Alternates</th><th></th>
+            </tr></thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ── DGR ── -->
+<div class="panel" id="panel-dgr">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+
+        <!-- UN opzoeken -->
+        <div class="card">
+            <h2>UN-nummer opzoeken</h2>
+            <div style="display:flex;gap:8px;margin-bottom:14px">
+                <input id="un-search" placeholder="Bijv. UN1203 of GASOLINE" style="flex:1">
+                <button class="btn btn-primary" onclick="searchUN()">Zoeken</button>
+            </div>
+            <div id="un-results"></div>
+        </div>
+
+        <!-- Segregatie check -->
+        <div class="card">
+            <h2>Segregatie check</h2>
+            <p style="font-size:0.82rem;color:#778;margin-bottom:12px">
+                Controleer of DG-klassen gecombineerd mogen worden op een vlucht.
+            </p>
+            <div id="seg-shipments"></div>
+            <button class="btn btn-sm btn-primary" style="margin:8px 0" onclick="addSegShipment()">+ Zending</button>
+            <button class="btn btn-primary" onclick="checkSegregation()">Controleer</button>
+            <div id="seg-result" style="margin-top:14px"></div>
+        </div>
+    </div>
+
+    <!-- Volledige validatie -->
+    <div class="card">
+        <h2>Volledige DGR validatie</h2>
+        <div style="display:flex;gap:12px;align-items:flex-end;margin-bottom:14px">
+            <div style="flex:1">
+                <label>Vliegtuigregistratie</label>
+                <select id="val-aircraft"><option value="">— kies vliegtuig —</option></select>
+            </div>
+        </div>
+        <div id="val-shipments"></div>
+        <button class="btn btn-sm btn-primary" style="margin:8px 0" onclick="addValShipment()">+ Zending</button>
+        <button class="btn btn-primary" onclick="validateShipments()">Valideer</button>
+        <div id="val-result" style="margin-top:14px"></div>
+    </div>
+</div>
+
+</main>
+
+<script>
+const API = 'http://localhost:8000';
+
+// ── Tabs ─────────────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(t => {
+    t.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+        document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
+        t.classList.add('active');
+        document.getElementById('panel-' + t.dataset.tab).classList.add('active');
+    });
+});
+
+// ── Helpers ──────────────────────────────────────────────
+function statusBadge(s) {
+    const map = {ACTIVE:'green',AOG:'red',MAINTENANCE:'orange'};
+    return `<span class="badge badge-${map[s]||'gray'}">${s}</span>`;
+}
+function severityBadge(s) {
+    const map = {HARD:'red',WARNING:'orange',INFO:'blue'};
+    return `<span class="badge badge-${map[s]||'gray'}">${s}</span>`;
+}
+function fmtMin(m) {
+    if (!m) return '—';
+    return `${Math.floor(m/60)}h${String(m%60).padStart(2,'0')}`;
+}
+function csvToList(val) {
+    return val ? val.split(',').map(s => s.trim()).filter(Boolean) : [];
+}
+
+async function api(method, path, body) {
+    const res = await fetch(API + path, {
+        method,
+        headers: body ? {'Content-Type':'application/json'} : {},
+        body: body ? JSON.stringify(body) : undefined,
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || `HTTP ${res.status}`);
+    }
+    return res.status === 204 ? null : res.json();
+}
+
+// ── FLEET ────────────────────────────────────────────────
+async function loadFleet() {
+    const data = await api('GET', '/aircraft');
+    const tbody = document.querySelector('#fleet-table tbody');
+    if (!data.length) { tbody.innerHTML = `<tr><td colspan="8" class="empty">Geen vliegtuigen</td></tr>`; return; }
+    tbody.innerHTML = data.map(ac => `
+        <tr>
+            <td><strong>${ac.registration}</strong></td>
+            <td>${ac.type}</td>
+            <td>${ac.max_payload_kg.toLocaleString()}</td>
+            <td>${ac.range_nm || '—'}</td>
+            <td>${ac.home_base || '—'}</td>
+            <td>${(ac.dg_classes_permitted||[]).join(', ') || '—'}</td>
+            <td>${statusBadge(ac.status)}</td>
+            <td><button class="btn btn-danger" onclick="deleteAircraft('${ac.registration}')">✕</button></td>
+        </tr>`).join('');
+}
+
+async function addAircraft() {
+    try {
+        await api('POST', '/aircraft', {
+            registration: document.getElementById('ac-reg').value,
+            type: document.getElementById('ac-type').value,
+            max_payload_kg: +document.getElementById('ac-payload').value,
+            volume_m3: +document.getElementById('ac-volume').value || null,
+            range_nm: +document.getElementById('ac-range').value || null,
+            home_base: document.getElementById('ac-base').value || null,
+            status: document.getElementById('ac-status').value,
+            dg_classes_permitted: csvToList(document.getElementById('ac-dg').value),
+            uld_types: [],
+        });
+        loadFleet();
+    } catch(e) { alert(e.message); }
+}
+
+async function deleteAircraft(reg) {
+    if (!confirm(`${reg} verwijderen?`)) return;
+    await api('DELETE', `/aircraft/${reg}`);
+    loadFleet();
+    loadValAircraft();
+}
+
+// ── AIRPORTS ─────────────────────────────────────────────
+async function loadAirports() {
+    const data = await api('GET', '/airports');
+    const tbody = document.querySelector('#airports-table tbody');
+    if (!data.length) { tbody.innerHTML = `<tr><td colspan="8" class="empty">Geen luchthavens</td></tr>`; return; }
+    tbody.innerHTML = data.map(ap => `
+        <tr>
+            <td><strong>${ap.icao}</strong></td>
+            <td>${ap.iata || '—'}</td>
+            <td>${ap.name}</td>
+            <td>${ap.country || '—'}</td>
+            <td>${ap.curfew_start ? `${ap.curfew_start}–${ap.curfew_end}` : '—'}</td>
+            <td>${(ap.dg_capable_classes||[]).join(', ') || '—'}</td>
+            <td>${ap.cargo_terminal || '—'}</td>
+            <td><button class="btn btn-danger" onclick="deleteAirport('${ap.icao}')">✕</button></td>
+        </tr>`).join('');
+}
+
+async function addAirport() {
+    try {
+        await api('POST', '/airports', {
+            icao: document.getElementById('ap-icao').value,
+            iata: document.getElementById('ap-iata').value || null,
+            name: document.getElementById('ap-name').value,
+            city: document.getElementById('ap-city').value || null,
+            country: document.getElementById('ap-country').value || null,
+            timezone: document.getElementById('ap-tz').value || null,
+            curfew_start: document.getElementById('ap-cs').value || null,
+            curfew_end: document.getElementById('ap-ce').value || null,
+            dg_capable_classes: csvToList(document.getElementById('ap-dg').value),
+            cargo_terminal: document.getElementById('ap-term').value || null,
+        });
+        loadAirports();
+    } catch(e) { alert(e.message); }
+}
+
+async function deleteAirport(icao) {
+    if (!confirm(`${icao} verwijderen?`)) return;
+    await api('DELETE', `/airports/${icao}`);
+    loadAirports();
+}
+
+// ── ROUTES ───────────────────────────────────────────────
+async function loadRoutes() {
+    const data = await api('GET', '/routes');
+    const tbody = document.querySelector('#routes-table tbody');
+    if (!data.length) { tbody.innerHTML = `<tr><td colspan="7" class="empty">Geen routes</td></tr>`; return; }
+    tbody.innerHTML = data.map(r => `
+        <tr>
+            <td><strong>${r.origin_icao}</strong></td>
+            <td><strong>${r.destination_icao}</strong></td>
+            <td>${r.distance_nm ? r.distance_nm + ' nm' : '—'}</td>
+            <td>${fmtMin(r.est_flight_time_min)}</td>
+            <td>${r.fuel_required_kg ? r.fuel_required_kg.toLocaleString() + ' kg' : '—'}</td>
+            <td>${(r.alternate_airports||[]).join(', ') || '—'}</td>
+            <td><button class="btn btn-danger" onclick="deleteRoute(${r.id})">✕</button></td>
+        </tr>`).join('');
+}
+
+async function addRoute() {
+    try {
+        await api('POST', '/routes', {
+            origin_icao: document.getElementById('rt-orig').value,
+            destination_icao: document.getElementById('rt-dest').value,
+            distance_nm: +document.getElementById('rt-dist').value || null,
+            est_flight_time_min: +document.getElementById('rt-time').value || null,
+            fuel_required_kg: +document.getElementById('rt-fuel').value || null,
+            alternate_airports: csvToList(document.getElementById('rt-alt').value),
+            overflight_countries: csvToList(document.getElementById('rt-ov').value),
+        });
+        loadRoutes();
+    } catch(e) { alert(e.message); }
+}
+
+async function deleteRoute(id) {
+    if (!confirm('Route verwijderen?')) return;
+    await api('DELETE', `/routes/${id}`);
+    loadRoutes();
+}
+
+// ── DGR ─────────────────────────────────────────────────
+
+async function searchUN() {
+    const q = document.getElementById('un-search').value.trim();
+    if (!q) return;
+    const data = await api('GET', `/dg/substances?q=${encodeURIComponent(q)}`);
+    const el = document.getElementById('un-results');
+    if (!data.length) { el.innerHTML = `<p class="empty">Geen resultaten voor "${q}"</p>`; return; }
+    el.innerHTML = data.map(s => `
+        <div style="border:1px solid #e4e8f0;border-radius:7px;padding:12px;margin-bottom:10px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+                <strong>${s.un_number}</strong>
+                <span>
+                    <span class="badge badge-blue">Klasse ${s.dg_class}${s.division?'.'+s.division:''}</span>
+                    ${s.cao_only ? '<span class="badge badge-orange" style="margin-left:4px">CAO-only</span>' : ''}
+                    ${s.packing_group ? `<span class="badge badge-gray" style="margin-left:4px">PG ${s.packing_group}</span>` : ''}
+                </span>
+            </div>
+            <div style="font-weight:600;margin-bottom:8px">${s.proper_shipping_name}</div>
+            <dl class="substance-detail">
+                <dt>Max qty PAX</dt><dd>${s.max_qty_pax_kg != null ? s.max_qty_pax_kg + ' kg' : '—'}</dd>
+                <dt>Max qty CAO</dt><dd>${s.max_qty_cao_kg != null ? s.max_qty_cao_kg + ' kg' : '—'}</dd>
+                ${s.description ? `<dt>Omschrijving</dt><dd style="grid-column:span 2">${s.description}</dd>` : ''}
+            </dl>
+        </div>`).join('');
+}
+
+// Segregation shipments
+let segShipments = [];
+function addSegShipment() {
+    segShipments.push({});
+    renderSegShipments();
+}
+function renderSegShipments() {
+    document.getElementById('seg-shipments').innerHTML = segShipments.map((_, i) => `
+        <div class="shipment-row">
+            <div><label>UN-nummer</label><input placeholder="UN1203" id="seg-un-${i}"></div>
+            <div><label>Netto qty (kg)</label><input type="number" placeholder="50" id="seg-qty-${i}"></div>
+            <div><label>Colli</label><input type="number" placeholder="1" id="seg-pkg-${i}" value="1"></div>
+            <div><button class="btn btn-danger" onclick="removeSegShipment(${i})">✕</button></div>
+        </div>`).join('');
+}
+function removeSegShipment(i) { segShipments.splice(i, 1); renderSegShipments(); }
+
+async function checkSegregation() {
+    const shipments = segShipments.map((_, i) => ({
+        un_number: document.getElementById(`seg-un-${i}`).value,
+        net_qty_kg: +document.getElementById(`seg-qty-${i}`).value || 0,
+        num_packages: +document.getElementById(`seg-pkg-${i}`).value || 1,
+    })).filter(s => s.un_number);
+    if (!shipments.length) { alert('Voeg eerst zendingen toe'); return; }
+    try {
+        const res = await api('POST', '/dg/segregation-check', { shipments });
+        renderConflicts('seg-result', res);
+    } catch(e) { alert(e.message); }
+}
+
+// Full validation shipments
+let valShipments = [];
+function addValShipment() { valShipments.push({}); renderValShipments(); }
+function renderValShipments() {
+    document.getElementById('val-shipments').innerHTML = valShipments.map((_, i) => `
+        <div class="shipment-row">
+            <div><label>UN-nummer</label><input placeholder="UN3480" id="val-un-${i}"></div>
+            <div><label>Netto qty (kg)</label><input type="number" placeholder="50" id="val-qty-${i}"></div>
+            <div><label>Colli</label><input type="number" placeholder="1" id="val-pkg-${i}" value="1"></div>
+            <div><button class="btn btn-danger" onclick="removeValShipment(${i})">✕</button></div>
+        </div>`).join('');
+}
+function removeValShipment(i) { valShipments.splice(i, 1); renderValShipments(); }
+
+async function loadValAircraft() {
+    const data = await api('GET', '/aircraft');
+    const sel = document.getElementById('val-aircraft');
+    sel.innerHTML = '<option value="">— kies vliegtuig —</option>' +
+        data.filter(ac => ac.status === 'ACTIVE')
+            .map(ac => `<option value="${ac.registration}">${ac.registration} (${ac.type})</option>`)
+            .join('');
+}
+
+async function validateShipments() {
+    const reg = document.getElementById('val-aircraft').value;
+    if (!reg) { alert('Kies een vliegtuig'); return; }
+    const shipments = valShipments.map((_, i) => ({
+        un_number: document.getElementById(`val-un-${i}`).value,
+        net_qty_kg: +document.getElementById(`val-qty-${i}`).value || 0,
+        num_packages: +document.getElementById(`val-pkg-${i}`).value || 1,
+    })).filter(s => s.un_number);
+    if (!shipments.length) { alert('Voeg eerst zendingen toe'); return; }
+    try {
+        const res = await api('POST', '/dg/validate', {
+            aircraft_registration: reg,
+            shipments,
+        });
+        renderConflicts('val-result', res);
+    } catch(e) { alert(e.message); }
+}
+
+function renderConflicts(elId, res) {
+    const el = document.getElementById(elId);
+    const statusHtml = `<div class="valid-result ${res.valid ? 'ok' : 'err'}" style="margin-bottom:12px">
+        ${res.valid ? '✓ Geen blokkerende conflicten' : '✗ Validatie mislukt — zie conflicten'}
+    </div>`;
+    if (!res.conflicts.length) { el.innerHTML = statusHtml; return; }
+    const items = res.conflicts.map(c => `
+        <li class="conflict-item ${c.severity}">
+            <span class="conflict-code">${severityBadge(c.severity)} ${c.code}</span>
+            <span>${c.message}</span>
+        </li>`).join('');
+    el.innerHTML = statusHtml + `<ul class="conflict-list">${items}</ul>`;
+}
+
+// ── Init ─────────────────────────────────────────────────
+async function init() {
+    await Promise.all([loadFleet(), loadAirports(), loadRoutes(), loadValAircraft()]);
+    addValShipment();
+    addSegShipment();
+}
+
+init();
+</script>
+</body>
+</html>
